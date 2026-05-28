@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balanceo de línea con RPW</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="container">
+        <h1>Balanceo de línea con método RPW</h1>
+        <p class="intro">Ingrese los tiempos de cada tarea y sus precedencias (separadas por comas). La aplicación calcula el peso posicional y arma las estaciones.</p>
+
+        <form action="{{ url_for('balanceo') }}" method="post" class="panel">
+            <label for="cycle_time">Tiempo de ciclo</label>
+            <input id="cycle_time" name="cycle_time" type="number" step="0.1" value="{{ cycle_time }}" required>
+
+            <div class="grid">
+                {% for i in range(1, 11) %}
+                <fieldset>
+                    <legend>Tarea T{{ i }}</legend>
+                    <label>Tiempo</label>
+                    <input type="number" step="0.1" name="task{{ i }}_time" value="{{ tasks[i-1].time if tasks else '' }}" required>
+                    <label>Precedencias</label>
+                    <input type="text" name="task{{ i }}_pred" value="{{ ','.join(tasks[i-1].predecessors) if tasks and tasks[i-1].predecessors else '' }}" placeholder="Ej. T1, T2">
+                </fieldset>
+                {% endfor %}
+            </div>
+
+            <button type="submit">Calcular RPW</button>
+        </form>
+
+        {% if result %}
+        <section class="panel results">
+            <h2>Resultados</h2>
+            <p><strong>Tiempo total:</strong> {{ result.total_time }} min</p>
+            <p><strong>Estaciones requeridas:</strong> {{ result.stations|length }}</p>
+            <p><strong>Utilización:</strong> {{ "%.2f"|format(result.utilization) }}%</p>
+            <p><strong>Tiempo ocioso total:</strong> {{ "%.2f"|format(result.idle_time) }} min</p>
+
+            <h3>Ranking RPW</h3>
+            <ol>
+                {% for task in result.ranked %}
+                <li><strong>{{ task.id }}</strong> — RPW: {{ "%.2f"|format(task.rpw) }} | Tiempo: {{ task.time }}</li>
+                {% endfor %}
+            </ol>
+
+            <h3>Asignación por estaciones</h3>
+            {% for station in result.stations %}
+            <article class="station">
+                <h4>Estación {{ loop.index }}</h4>
+                <p>{{ station.tasks|map(attribute='id')|join(' → ') }}</p>
+                <p><strong>Carga:</strong> {{ "%.2f"|format(station.used) }} min</p>
+                <p><strong>Tiempo ocioso:</strong> {{ "%.2f"|format(cycle_time - station.used) }} min</p>
+            </article>
+            {% endfor %}
+        </section>
+        {% endif %}
+    </main>
+</body>
+</html>
